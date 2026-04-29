@@ -1,7 +1,7 @@
 const STORAGE_KEY = "gongyang_hypertext_v2_full";
 const STORAGE_BACKUP_KEY = `${STORAGE_KEY}__backup`;
 const STORAGE_META_KEY = `${STORAGE_KEY}__meta`;
-const APP_VERSION = "2026-04-07.8";
+const APP_VERSION = "2026-04-14.2";
 
 const seedCorpus = {
   "metadata": {
@@ -8535,7 +8535,8 @@ const seedCorpus = {
       ]
     }
   ],
-  "annotations": {}
+  "annotations": {},
+  "annotationLinks": []
 };
 
 
@@ -8554,7 +8555,9 @@ const HEXIU_PREFACE_SECTION = {
 const runtimeState = {
   loadSource: "seed",
   loadError: "",
-  lastPersistError: ""
+  lastPersistError: "",
+  lastPersistBackend: "",
+  hasLocalMutations: false
 };
 
 const state = {
@@ -8604,6 +8607,8 @@ function init() {
   const sourceLabel =
     runtimeState.loadSource === "localStorage"
       ? "瀏覽器儲存"
+      : runtimeState.loadSource === "sessionStorage"
+      ? "分頁儲存"
       : runtimeState.loadSource === "backup"
       ? "備援儲存"
       : "內建資料";
@@ -8614,7 +8619,12 @@ function init() {
   } else {
     setStatus(`v${APP_VERSION}｜已載入${sourceLabel}。可連接 JSON 檔，後續儲存可自動同步。`);
   }
-  void reconcileWithProjectJson({ force: false, showStatus: true });
+
+  // Only hydrate from project JSON when browser storage has no valid data.
+  // This avoids silently overwriting newly edited notes on refresh.
+  if (runtimeState.loadSource === "seed") {
+    void reconcileWithProjectJson({ force: false, showStatus: true });
+  }
 }
 
 function wireEvents() {
@@ -8715,6 +8725,10 @@ function wireEvents() {
         return;
       }
       if (action === "new-ann") {
+        if (uiState.pendingSelection) {
+          startQuickAnnotationFromSelection();
+          return;
+        }
         let suggestedId = buildNewAnnotationId();
         if (state.activeAnnotationId && !state.corpus.annotations[state.activeAnnotationId]) {
           const resolved = sanitizeId(state.activeAnnotationId);
@@ -8736,8 +8750,9 @@ function wireEvents() {
         delete state.corpus.annotations[state.activeAnnotationId];
         state.activeAnnotationId = null;
         uiState.editor = null;
-        persist();
+        const didPersist = persist();
         renderAll();
+        if (!didPersist) return;
         setStatus("註釋已刪除。", false);
         return;
       }
@@ -8827,6 +8842,10 @@ function wireEvents() {
 
   if (refs.newAnnotationBtn) {
     refs.newAnnotationBtn.addEventListener("click", () => {
+      if (uiState.pendingSelection) {
+        startQuickAnnotationFromSelection();
+        return;
+      }
       let suggestedId = buildNewAnnotationId();
       if (state.activeAnnotationId && !state.corpus.annotations[state.activeAnnotationId]) {
         const resolved = sanitizeId(state.activeAnnotationId);
@@ -9288,6 +9307,7 @@ function renderParagraphEditor(selectedSectionId, selectedParagraphId) {
 
 function saveAnnotationFromForm(form) {
   const payload = Object.fromEntries(new FormData(form).entries());
+  const editorMode = uiState.editor?.mode || "edit";
   const annId = sanitizeId(payload.id || "");
   if (!annId) {
     setStatus("註釋 ID 不合法。僅允許英文、數字、下劃線、短橫線。", true);
@@ -9297,11 +9317,11 @@ function saveAnnotationFromForm(form) {
     setStatus("標題和註釋正文不可為空。", true);
     return;
   }
-  if (!state.corpus.annotations[annId] && uiState.editor.mode !== "new") {
+  if (!state.corpus.annotations[annId] && editorMode !== "new") {
     setStatus("目標註釋不存在。", true);
     return;
   }
-  if (uiState.editor.mode === "new" && state.corpus.annotations[annId]) {
+  if (editorMode === "new" && state.corpus.annotations[annId]) {
     setStatus(`註釋 ID ${annId} 已存在，請更換。`, true);
     return;
   }
@@ -9314,13 +9334,44 @@ function saveAnnotationFromForm(form) {
     links: splitCSV(payload.links).map((value) => sanitizeId(value)).filter(Boolean)
   };
 
+  let insertionResult = null;
+  if (editorMode === "new" && uiState.pendingSelection) {
+    insertionResult = insertAnnotationIntoSelection({
+      annId,
+      sectionId: uiState.pendingSelection.sectionId,
+      paragraphId: uiState.pendingSelection.paragraphId,
+      plainStart: uiState.pendingSelection.plainStart,
+      plainEnd: uiState.pendingSelection.plainEnd,
+      selectedText: uiState.pendingSelection.selectedText
+    });
+  }
+
   state.activeAnnotationId = annId;
   uiState.editor = null;
-  persist();
+  clearPendingSelection();
+  hideSelectionToolbar();
+  const didPersist = persist();
   renderAll();
+  if (!didPersist) return;
+
+  if (insertionResult?.ok) {
+    jumpToParagraph(insertionResult.sectionId, insertionResult.paragraphId);
+    setStatus(`註釋 ${annId} 已儲存並插入正文。`, false);
+    return;
+  }
+
+  if (insertionResult && !insertionResult.ok) {
+    setStatus(`註釋 ${annId} 已儲存，但插入正文失敗：${insertionResult.error}`, true);
+    return;
+  }
+
+  if (editorMode === "new") {
+    setStatus(`註釋 ${annId} 已儲存（尚未插入正文）。`, false);
+    return;
+  }
+
   setStatus(`註釋 ${annId} 已儲存。`, false);
 }
-
 function saveParagraphFromForm(form) {
   const payload = Object.fromEntries(new FormData(form).entries());
   const [sectionId, paragraphId] = (payload.paragraphRef || "").split("::");
@@ -9331,8 +9382,9 @@ function saveParagraphFromForm(form) {
   }
   paragraph.text = stripAngleBrackets((payload.text || "").trim());
   uiState.editor = null;
-  persist();
+  const didPersist = persist();
   renderAll();
+  if (!didPersist) return;
   setStatus(`段落 ${paragraphId} 已更新。`, false);
 }
 
@@ -9368,8 +9420,9 @@ function addSectionInteractive() {
   };
   state.corpus.sections.push(newSection);
   uiState.editor = { type: "paragraph", sectionId, paragraphId };
-  persist();
+  const didPersist = persist();
   renderAll();
+  if (!didPersist) return;
   setStatus(`已新增章節 ${newSection.title}。`, false);
 }
 
@@ -9392,8 +9445,9 @@ function deleteSectionInteractive(sectionId) {
     sectionId: fallback?.id || "",
     paragraphId
   };
-  persist();
+  const didPersist = persist();
   renderAll();
+  if (!didPersist) return;
   setStatus(`已刪除章節「${section.title}」。`, false);
 }
 
@@ -9406,8 +9460,9 @@ function addParagraphInteractive(sectionId) {
     text: ""
   });
   uiState.editor = { type: "paragraph", sectionId, paragraphId };
-  persist();
+  const didPersist = persist();
   renderAll();
+  if (!didPersist) return;
   setStatus(`已新增段落 ${paragraphId}。`, false);
 }
 
@@ -9430,8 +9485,9 @@ function deleteParagraphInteractive(sectionId, paragraphId) {
     sectionId,
     paragraphId: fallback?.id || ""
   };
-  persist();
+  const didPersist = persist();
   renderAll();
+  if (!didPersist) return;
   setStatus(`已刪除段落 ${paragraphId}。`, false);
 }
 
@@ -9452,8 +9508,9 @@ function moveParagraphInteractive(sectionId, paragraphId, direction) {
     sectionId,
     paragraphId
   };
-  persist();
+  const didPersist = persist();
   renderAll();
+  if (!didPersist) return;
   setStatus(`已移動段落 ${paragraphId}。`, false);
 }
 
@@ -9479,9 +9536,54 @@ function moveSectionInteractiveByDrag(sourceId, targetId, after = false) {
   const insertIndex = Math.max(0, Math.min(state.corpus.sections.length, targetIndex + (after ? 1 : 0)));
   state.corpus.sections.splice(insertIndex, 0, moved);
 
-  persist();
+  const didPersist = persist();
   renderAll();
+  if (!didPersist) return;
   setStatus(`已調整章節順序：${moved.title}。`, false);
+}
+
+function normalizeAnnotationLabel(value) {
+  return String(value || "")
+    .trim()
+    .replaceAll("|", "｜")
+    .replaceAll("]]", "］］");
+}
+
+function insertAnnotationIntoSelection({ annId, sectionId, paragraphId, plainStart, plainEnd, selectedText }) {
+  const paragraph = findParagraphByIds(sectionId, paragraphId);
+  if (!paragraph) {
+    return { ok: false, error: "未找到目標段落。" };
+  }
+
+  const mapping = buildParagraphPlainMeta(paragraph.text);
+  if (
+    Number.isNaN(plainStart) ||
+    Number.isNaN(plainEnd) ||
+    plainStart < 0 ||
+    plainEnd <= plainStart ||
+    plainEnd > mapping.plainText.length
+  ) {
+    return { ok: false, error: "選區資料失效，請重新選取文本。" };
+  }
+
+  if (selectionOverlapsTokenRange(mapping.tokenRanges, plainStart, plainEnd)) {
+    return { ok: false, error: "選區與既有註釋重疊，請改選純正文。" };
+  }
+
+  const rawStart = mapping.boundaries[plainStart];
+  const rawEnd = mapping.boundaries[plainEnd];
+  if (typeof rawStart !== "number" || typeof rawEnd !== "number" || rawEnd <= rawStart) {
+    return { ok: false, error: "選區映射失敗，請重新選取。" };
+  }
+
+  const label = normalizeAnnotationLabel(selectedText);
+  if (!label) {
+    return { ok: false, error: "選取文本為空，無法插入。" };
+  }
+
+  const marker = `[[${annId}|${label}]]`;
+  paragraph.text = paragraph.text.slice(0, rawStart) + marker + paragraph.text.slice(rawEnd);
+  return { ok: true, sectionId, paragraphId };
 }
 
 function saveQuickAnnotationFromForm(form) {
@@ -9502,42 +9604,21 @@ function saveQuickAnnotationFromForm(form) {
 
   const sectionId = String(payload.sectionId || "");
   const paragraphId = String(payload.paragraphId || "");
-  const paragraph = findParagraphByIds(sectionId, paragraphId);
-  if (!paragraph) {
-    setStatus("未找到目標段落。", true);
-    return;
-  }
-
   const plainStart = Number.parseInt(String(payload.plainStart || "-1"), 10);
   const plainEnd = Number.parseInt(String(payload.plainEnd || "-1"), 10);
   const selectedText = String(payload.selectedText || "");
-  const mapping = buildParagraphPlainMeta(paragraph.text);
-
-  if (
-    Number.isNaN(plainStart) ||
-    Number.isNaN(plainEnd) ||
-    plainStart < 0 ||
-    plainEnd <= plainStart ||
-    plainEnd > mapping.plainText.length
-  ) {
-    setStatus("選區資訊無效，請重新選取文本。", true);
+  const insertionResult = insertAnnotationIntoSelection({
+    annId,
+    sectionId,
+    paragraphId,
+    plainStart,
+    plainEnd,
+    selectedText
+  });
+  if (!insertionResult.ok) {
+    setStatus(insertionResult.error, true);
     return;
   }
-
-  if (selectionOverlapsTokenRange(mapping.tokenRanges, plainStart, plainEnd)) {
-    setStatus("目前不支援在既有註釋標籤上再次標註，請改選純正文。", true);
-    return;
-  }
-
-  const rawStart = mapping.boundaries[plainStart];
-  const rawEnd = mapping.boundaries[plainEnd];
-  if (typeof rawStart !== "number" || typeof rawEnd !== "number" || rawEnd <= rawStart) {
-    setStatus("選區映射失敗，請重新選擇文本。", true);
-    return;
-  }
-
-  const marker = `[[${annId}|${selectedText}]]`;
-  paragraph.text = paragraph.text.slice(0, rawStart) + marker + paragraph.text.slice(rawEnd);
 
   state.corpus.annotations[annId] = {
     id: annId,
@@ -9551,9 +9632,11 @@ function saveQuickAnnotationFromForm(form) {
   uiState.editor = null;
   clearPendingSelection();
   hideSelectionToolbar();
-  persist();
+  const didPersist = persist();
   renderAll();
-  setStatus(`註釋 ${annId} 已添加。`, false);
+  if (!didPersist) return;
+  jumpToParagraph(insertionResult.sectionId, insertionResult.paragraphId);
+  setStatus(`註釋 ${annId} 已添加並定位。`, false);
 }
 
 function openAnnotation(annId) {
@@ -9756,9 +9839,10 @@ async function connectDataFile() {
     uiState.editor = null;
     clearPendingSelection();
     hideSelectionToolbar();
-    persist();
+    const didPersist = persist({ markDirty: false });
     renderAll();
     updateFileSyncButtons();
+    if (!didPersist) return;
     setStatus(`已連接資料檔 ${file.name}，後續儲存將自動同步。`, false);
   } catch (error) {
     if (error?.name === "AbortError") return;
@@ -9837,11 +9921,13 @@ async function reconcileWithProjectJson({ force = false, showStatus = false } = 
     const localSavedAt = Number(localMeta.savedAt || 0);
     const headerValue = response.headers.get("Last-Modified");
     const serverSavedAt = headerValue ? Date.parse(headerValue) : 0;
+    const keepLocalBecauseEdited = !force && runtimeState.hasLocalMutations;
     const shouldUseServer =
-      force ||
-      runtimeState.loadSource === "seed" ||
-      !localSavedAt ||
-      (serverSavedAt && serverSavedAt >= localSavedAt);
+      !keepLocalBecauseEdited &&
+      (force ||
+        runtimeState.loadSource === "seed" ||
+        !localSavedAt ||
+        (serverSavedAt && serverSavedAt >= localSavedAt));
 
     if (!shouldUseServer) {
       if (showStatus) {
@@ -9855,8 +9941,9 @@ async function reconcileWithProjectJson({ force = false, showStatus = false } = 
     uiState.editor = null;
     clearPendingSelection();
     hideSelectionToolbar();
-    persist({ savedAt: serverSavedAt || Date.now() });
+    const didPersist = persist({ savedAt: serverSavedAt || Date.now(), markDirty: false });
     renderAll();
+    if (!didPersist) return false;
     runtimeState.loadSource = "serverJson";
     runtimeState.loadError = "";
     if (showStatus) {
@@ -9895,8 +9982,9 @@ function importCorpus(event) {
       uiState.editor = null;
       clearPendingSelection();
       hideSelectionToolbar();
-      persist();
+      const didPersist = persist();
       renderAll();
+      if (!didPersist) return;
       setStatus("匯入成功。", false);
     } catch (error) {
       setStatus(`匯入失敗：${error.message}`, true);
@@ -9915,8 +10003,9 @@ function resetCorpus() {
   uiState.editor = null;
   clearPendingSelection();
   hideSelectionToolbar();
-  persist();
+  const didPersist = persist();
   renderAll();
+  if (!didPersist) return;
   setStatus("已還原範例資料。", false);
 }
 
@@ -10178,66 +10267,107 @@ function normalizeCorpus(source) {
   return corpus;
 }
 
+function getStorageCandidates() {
+  const candidates = [];
+  try {
+    if (typeof localStorage !== "undefined") {
+      candidates.push({ name: "localStorage", storage: localStorage });
+    }
+  } catch (_error) {
+    // Ignore and fallback to next backend.
+  }
+  try {
+    if (typeof sessionStorage !== "undefined") {
+      candidates.push({ name: "sessionStorage", storage: sessionStorage });
+    }
+  } catch (_error) {
+    // Ignore and fallback to next backend.
+  }
+  return candidates;
+}
+
 function persist(options = {}) {
   const serialized = JSON.stringify(state.corpus);
   const savedAt =
     typeof options.savedAt === "number" && Number.isFinite(options.savedAt)
       ? options.savedAt
       : Date.now();
-  try {
-    localStorage.setItem(STORAGE_KEY, serialized);
-    localStorage.setItem(STORAGE_BACKUP_KEY, serialized);
-    localStorage.setItem(
-      STORAGE_META_KEY,
-      JSON.stringify({
-        savedAt
-      })
-    );
-    runtimeState.lastPersistError = "";
-  } catch (error) {
-    runtimeState.lastPersistError = error.message;
-    setStatus(`儲存到瀏覽器失敗：${error.message}。請連接資料檔後編輯。`, true);
+  const markDirty = options.markDirty !== false;
+  const errors = [];
+
+  let writeTarget = null;
+  for (const target of getStorageCandidates()) {
+    try {
+      target.storage.setItem(STORAGE_KEY, serialized);
+      target.storage.setItem(STORAGE_BACKUP_KEY, serialized);
+      target.storage.setItem(
+        STORAGE_META_KEY,
+        JSON.stringify({
+          savedAt
+        })
+      );
+      writeTarget = target;
+      break;
+    } catch (error) {
+      errors.push(`${target.name}: ${error.message}`);
+    }
   }
+
+  if (!writeTarget) {
+    runtimeState.lastPersistBackend = "";
+    runtimeState.lastPersistError = errors.join(" | ") || "unknown error";
+    setStatus(`儲存失敗：${runtimeState.lastPersistError}。請連接資料檔後編輯。`, true);
+    scheduleAutoFileSync();
+    return false;
+  }
+
+  runtimeState.lastPersistBackend = writeTarget.name;
+  runtimeState.lastPersistError = "";
+  runtimeState.hasLocalMutations = markDirty ? true : false;
   scheduleAutoFileSync();
+  return true;
 }
 
 function loadCorpus() {
   const errors = [];
-  let raw = null;
-  try {
-    raw = localStorage.getItem(STORAGE_KEY);
-  } catch (error) {
-    errors.push(`無法讀取瀏覽器儲存：${error.message}`);
-  }
 
-  if (raw) {
+  for (const target of getStorageCandidates()) {
+    let raw = null;
     try {
-      const parsed = JSON.parse(raw);
-      validateCorpusShape(parsed);
-      runtimeState.loadSource = "localStorage";
-      runtimeState.loadError = "";
-      return normalizeCorpus(parsed);
+      raw = target.storage.getItem(STORAGE_KEY);
     } catch (error) {
-      errors.push(`主儲存資料損壞：${error.message}`);
+      errors.push(`${target.name} 讀取失敗：${error.message}`);
     }
-  }
 
-  let backupRaw = null;
-  try {
-    backupRaw = localStorage.getItem(STORAGE_BACKUP_KEY);
-  } catch (error) {
-    errors.push(`無法讀取備援儲存：${error.message}`);
-  }
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        validateCorpusShape(parsed);
+        runtimeState.loadSource = target.name;
+        runtimeState.loadError = "";
+        return normalizeCorpus(parsed);
+      } catch (error) {
+        errors.push(`${target.name} 主儲存資料損壞：${error.message}`);
+      }
+    }
 
-  if (backupRaw) {
+    let backupRaw = null;
     try {
-      const parsed = JSON.parse(backupRaw);
-      validateCorpusShape(parsed);
-      runtimeState.loadSource = "backup";
-      runtimeState.loadError = errors.join("；");
-      return normalizeCorpus(parsed);
+      backupRaw = target.storage.getItem(STORAGE_BACKUP_KEY);
     } catch (error) {
-      errors.push(`備援儲存資料損壞：${error.message}`);
+      errors.push(`${target.name} 備援讀取失敗：${error.message}`);
+    }
+
+    if (backupRaw) {
+      try {
+        const parsed = JSON.parse(backupRaw);
+        validateCorpusShape(parsed);
+        runtimeState.loadSource = target.name === "localStorage" ? "backup" : "sessionStorage";
+        runtimeState.loadError = errors.join("；");
+        return normalizeCorpus(parsed);
+      } catch (error) {
+        errors.push(`${target.name} 備援資料損壞：${error.message}`);
+      }
     }
   }
 
@@ -10247,15 +10377,18 @@ function loadCorpus() {
 }
 
 function readLocalMeta() {
-  try {
-    const raw = localStorage.getItem(STORAGE_META_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") return {};
-    return parsed;
-  } catch (_error) {
-    return {};
+  for (const target of getStorageCandidates()) {
+    try {
+      const raw = target.storage.getItem(STORAGE_META_KEY);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") continue;
+      return parsed;
+    } catch (_error) {
+      // Try next storage backend.
+    }
   }
+  return {};
 }
 
 function setStatus(message, isError = false) {
@@ -10281,3 +10414,4 @@ function structuredCloneSafe(obj) {
   }
   return JSON.parse(JSON.stringify(obj));
 }
+

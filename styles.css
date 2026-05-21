@@ -1,11 +1,9 @@
 :root {
   --bg: #f3e8d2;
-  --bg-strong: #e8d8b5;
   --panel: #fffaf0;
   --ink: #2a2018;
   --muted: #6d5a46;
   --accent: #0c6b58;
-  --accent-soft: #d9f2ea;
   --line: #d2c2a5;
   --danger: #9a2a2a;
   --shadow: 0 12px 30px rgba(49, 33, 15, 0.12);
@@ -15,7 +13,8 @@
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   margin: 0;
   min-height: 100%;
 }
@@ -68,7 +67,9 @@ body {
   color: var(--muted);
 }
 
-h1, h2, h3 {
+h1,
+h2,
+h3 {
   margin: 0;
   font-weight: 700;
 }
@@ -156,7 +157,9 @@ button.danger {
   margin-top: 10px;
 }
 
-.left-nav, .reading-pane, .inspector {
+.left-nav,
+.reading-pane,
+.inspector {
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--panel);
@@ -244,56 +247,11 @@ button.danger {
   background: rgba(255, 255, 255, 0.48);
 }
 
-.section-paragraph::selection {
-  background: rgba(12, 107, 88, 0.25);
-}
-
 .section-paragraph mark {
   background: #f9ebb8;
   color: inherit;
   padding: 0 2px;
   border-radius: 3px;
-}
-
-.ann-token {
-  display: inline;
-  border: 0;
-  border-bottom: 2px solid rgba(12, 107, 88, 0.65);
-  background: rgba(217, 242, 234, 0.38);
-  color: #114c40;
-  border-radius: 4px;
-  padding: 0 3px;
-  margin: 0 1px;
-  line-height: inherit;
-  font-weight: 500;
-  text-decoration: none;
-}
-
-.ann-token:hover {
-  transform: none;
-  background: rgba(217, 242, 234, 0.9);
-  border-bottom-color: var(--accent);
-}
-
-.ann-token::after {
-  content: "註";
-  display: inline-block;
-  margin-left: 2px;
-  font-size: 10px;
-  line-height: 1;
-  vertical-align: super;
-  color: var(--accent);
-  opacity: 0.9;
-}
-
-.ann-token.active {
-  background: var(--accent-soft);
-  border-bottom-color: var(--accent);
-}
-
-.ann-token.unresolved {
-  border-bottom-color: #b34a3e;
-  background: rgba(255, 223, 215, 0.7);
 }
 
 .inspector {
@@ -302,53 +260,38 @@ button.danger {
   overflow: auto;
 }
 
-.panel-intro p {
-  margin: 8px 0;
-  color: var(--muted);
-}
-
-.annotation-title {
-  margin: 8px 0 4px;
-}
-
-.annotation-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-
-.tag {
-  font-size: 12px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: #f0e3c8;
-  color: #6f5130;
-}
-
-.annotation-body {
-  white-space: pre-wrap;
-  margin: 10px 0;
-  line-height: 1.8;
-}
-
-.panel-actions {
-  display: flex;
-  gap: 8px;
-  margin: 10px 0;
-}
-
-.occurrence-item, .linked-item, .catalog-item {
-  padding: 8px;
+.workspace-card {
+  padding: 10px 12px;
   border: 1px solid #eadcc1;
-  border-radius: 8px;
-  margin: 8px 0;
+  border-radius: 10px;
+  margin: 10px 0;
   background: rgba(255, 255, 255, 0.75);
+}
+
+.workspace-card p {
+  margin: 4px 0;
 }
 
 .small {
   font-size: 12px;
   color: var(--muted);
+}
+
+.hint {
+  margin-top: 0;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.panel-actions {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.panel-actions.wrap {
+  flex-wrap: wrap;
 }
 
 form {
@@ -377,7 +320,7 @@ select {
 }
 
 textarea {
-  min-height: 120px;
+  min-height: 220px;
   resize: vertical;
 }
 
@@ -386,38 +329,12 @@ textarea {
   gap: 8px;
 }
 
-.hint {
-  margin-top: 0;
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.selection-toolbar {
-  position: fixed;
-  z-index: 20;
-  transform: translate(-50%, -100%);
-  padding: 6px;
-  border: 1px solid #9bb9ae;
-  border-radius: 10px;
-  background: #f6fff9;
-  box-shadow: 0 10px 24px rgba(10, 40, 33, 0.18);
-}
-
-.selection-toolbar button {
-  border-color: #2f7362;
-  background: #0c6b58;
-  color: #fff;
-}
-
-.selection-toolbar button:hover {
-  background: #0f7b65;
-}
-
 @keyframes fade-in {
   from {
     opacity: 0;
     transform: translateY(4px);
   }
+
   to {
     opacity: 1;
     transform: none;
@@ -434,7 +351,8 @@ textarea {
     height: auto;
   }
 
-  .reading-pane, .left-nav {
+  .reading-pane,
+  .left-nav {
     min-height: 520px;
     height: auto;
   }
@@ -471,5 +389,10 @@ textarea {
   .section-paragraph {
     font-size: 17px;
     line-height: 1.8;
+  }
+
+  .editor-buttons,
+  .panel-actions {
+    flex-wrap: wrap;
   }
 }

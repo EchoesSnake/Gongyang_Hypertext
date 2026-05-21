@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>公羊傳 Hypertext 註釋版</title>
+  <title>《公羊傳》文本工作台</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -14,22 +14,21 @@
   <div class="app-shell">
     <header class="topbar">
       <div class="brand">
-        <p class="brand-kicker">Interactive Annotated Hypertext Edition</p>
-        <h1>《公羊傳》互動註釋版</h1>
+        <p class="brand-kicker">Text Workspace</p>
+        <h1>《公羊傳》文本工作台</h1>
       </div>
       <div class="top-actions">
         <label class="search-wrap" for="searchInput">
           <span>檢索</span>
-          <input id="searchInput" type="search" placeholder="詞條、正文或註釋內容">
+          <input id="searchInput" type="search" placeholder="搜尋章節名稱或正文">
         </label>
-        <button id="newAnnotationBtn" class="ghost" type="button">新增註釋</button>
         <button id="editParagraphBtn" class="ghost" type="button">編輯正文</button>
         <button id="connectFileBtn" class="ghost" type="button">連接資料檔</button>
         <button id="syncFileBtn" class="ghost" type="button">同步到資料檔</button>
         <button id="reloadProjectBtn" class="ghost" type="button">重載專案 JSON</button>
         <button id="exportBtn" type="button">匯出 JSON</button>
         <button id="importBtn" type="button">匯入 JSON</button>
-        <button id="resetBtn" class="danger" type="button">還原範例資料</button>
+        <button id="resetBtn" class="danger" type="button">還原專案資料</button>
         <input id="importInput" type="file" accept="application/json" hidden>
       </div>
     </header>
@@ -38,7 +37,7 @@
 
     <main class="layout">
       <aside class="left-nav">
-        <h2>篇章導航</h2>
+        <h2>章節導覽</h2>
         <p class="small">可拖曳章節調整順序</p>
         <nav id="sectionNav"></nav>
       </aside>
@@ -46,16 +45,13 @@
       <article class="reading-pane">
         <div class="reading-head">
           <h2>正文</h2>
-          <p>點擊詞條可查看註釋，或直接在正文中選取文字後新增註釋。</p>
+          <p>目前為純文本模式。註釋前端已移除，只保留正文瀏覽、搜索與編輯。</p>
         </div>
         <div id="textRoot" class="text-root"></div>
-        <div id="selectionToolbar" class="selection-toolbar" hidden>
-          <button id="addSelectionAnnotationBtn" type="button">為選取文字新增註釋</button>
-        </div>
       </article>
 
       <aside class="inspector">
-        <div id="annotationPanel"></div>
+        <div id="sidePanel"></div>
       </aside>
     </main>
   </div>
@@ -69,6 +65,6 @@
     }
   });
   </script>
-  <script src="app.js?v=20260521-2"></script>
+  <script src="app.js?v=20260521-3"></script>
 </body>
 </html>

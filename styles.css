@@ -358,6 +358,433 @@ textarea {
   }
 }
 
+/* ========================================
+   Annotation tokens (Joyce Project style)
+   ======================================== */
+
+:root {
+  --ann-commentary: #0c6b58;
+  --ann-commentary-bg: rgba(12, 107, 88, 0.10);
+  --ann-definition: #8b4513;
+  --ann-definition-bg: rgba(139, 69, 19, 0.08);
+  --ann-crossref: #7b2d8b;
+  --ann-crossref-bg: rgba(123, 45, 139, 0.08);
+  --ann-historical: #b22222;
+  --ann-historical-bg: rgba(178, 34, 34, 0.08);
+  --ann-interpretation: #1e3a5f;
+  --ann-interpretation-bg: rgba(30, 58, 95, 0.08);
+}
+
+.ann-token {
+  display: inline;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 2px;
+  margin: 0 1px;
+  line-height: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  position: relative;
+  transition: background 180ms ease, border-color 180ms ease;
+  text-decoration: none;
+}
+
+.ann-token::after {
+  font-size: 9px;
+  line-height: 1;
+  vertical-align: super;
+  margin-left: 1px;
+  opacity: 0.7;
+  font-weight: 700;
+  position: relative;
+  top: -0.25em;
+}
+
+.ann-token:hover {
+  filter: brightness(0.9);
+}
+
+.ann-token.active {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+  border-radius: 4px;
+}
+
+.ann-token.unresolved {
+  border-bottom: 2px dashed #9a2a2a;
+  background: rgba(154, 42, 42, 0.12);
+}
+
+.ann-token.unresolved::after {
+  content: "?";
+  color: #9a2a2a;
+}
+
+/* Type: commentary (green solid underline) */
+.ann-type-commentary {
+  border-bottom: 2.5px solid var(--ann-commentary);
+  background: var(--ann-commentary-bg);
+}
+.ann-type-commentary:hover {
+  background: rgba(12, 107, 88, 0.22);
+}
+.ann-type-commentary::after {
+  content: "注";
+  color: var(--ann-commentary);
+}
+
+/* Type: definition (brown dotted underline) */
+.ann-type-definition {
+  border-bottom: 2.5px dotted var(--ann-definition);
+  background: var(--ann-definition-bg);
+}
+.ann-type-definition:hover {
+  background: rgba(139, 69, 19, 0.18);
+}
+.ann-type-definition::after {
+  content: "訓";
+  color: var(--ann-definition);
+}
+
+/* Type: cross_reference (purple dashed underline) */
+.ann-type-cross_reference {
+  border-bottom: 2.5px dashed var(--ann-crossref);
+  background: var(--ann-crossref-bg);
+}
+.ann-type-cross_reference:hover {
+  background: rgba(123, 45, 139, 0.18);
+}
+.ann-type-cross_reference::after {
+  content: "參";
+  color: var(--ann-crossref);
+}
+
+/* Type: historical_note (red wavy underline) */
+.ann-type-historical_note {
+  border-bottom: 2.5px wavy var(--ann-historical);
+  background: var(--ann-historical-bg);
+}
+.ann-type-historical_note:hover {
+  background: rgba(178, 34, 34, 0.18);
+}
+.ann-type-historical_note::after {
+  content: "史";
+  color: var(--ann-historical);
+}
+
+/* Type: interpretation (blue double underline) */
+.ann-type-interpretation {
+  border-bottom: 3px double var(--ann-interpretation);
+  background: var(--ann-interpretation-bg);
+}
+.ann-type-interpretation:hover {
+  background: rgba(30, 58, 95, 0.18);
+}
+.ann-type-interpretation::after {
+  content: "義";
+  color: var(--ann-interpretation);
+}
+
+/* ========================================
+   Type badges
+   ======================================== */
+
+.ann-type-badge {
+  display: inline-block;
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.ann-type-badge.commentary {
+  background: var(--ann-commentary-bg);
+  color: var(--ann-commentary);
+  border: 1px solid var(--ann-commentary);
+}
+
+.ann-type-badge.definition {
+  background: var(--ann-definition-bg);
+  color: var(--ann-definition);
+  border: 1px solid var(--ann-definition);
+}
+
+.ann-type-badge.cross_reference {
+  background: var(--ann-crossref-bg);
+  color: var(--ann-crossref);
+  border: 1px solid var(--ann-crossref);
+}
+
+.ann-type-badge.historical_note {
+  background: var(--ann-historical-bg);
+  color: var(--ann-historical);
+  border: 1px solid var(--ann-historical);
+}
+
+.ann-type-badge.interpretation {
+  background: var(--ann-interpretation-bg);
+  color: var(--ann-interpretation);
+  border: 1px solid var(--ann-interpretation);
+}
+
+.ann-type-badge.small-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+/* ========================================
+   Annotation detail card
+   ======================================== */
+
+.annotation-detail {
+  animation: fade-in 280ms ease both;
+}
+
+.annotation-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.annotation-detail-head .small {
+  margin: 0;
+}
+
+.back-btn {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.7);
+  color: #3f2c18;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  transition: background 180ms ease, transform 140ms ease;
+}
+
+.back-btn:hover {
+  background: #f8edd8;
+  transform: translateX(-2px);
+}
+
+.annotation-title {
+  font-size: 22px;
+  margin: 6px 0;
+  color: #4d2f13;
+  border-left: 4px solid #bf9e6a;
+  padding-left: 10px;
+}
+
+.annotation-meta {
+  margin: 8px 0;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ann-tag {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(217, 195, 148, 0.35);
+  color: #5a4025;
+  border: 1px solid #d2c2a5;
+}
+
+.annotation-body {
+  white-space: pre-wrap;
+  line-height: 1.85;
+  margin: 14px 0;
+  font-size: 15px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 8px;
+  border: 1px solid #eadcc1;
+}
+
+.linked-item,
+.occurrence-item {
+  padding: 8px 12px;
+  border: 1px solid #eadcc1;
+  border-radius: 8px;
+  margin: 6px 0;
+  background: rgba(255, 255, 255, 0.6);
+  transition: background 150ms ease;
+}
+
+.linked-item:hover,
+.occurrence-item:hover {
+  background: rgba(255, 250, 240, 0.9);
+}
+
+.linked-item strong,
+.occurrence-item strong {
+  display: block;
+  margin-bottom: 2px;
+}
+
+.linked-item .small,
+.occurrence-item .small {
+  margin: 2px 0;
+}
+
+.linked-item button,
+.occurrence-item button {
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+/* ========================================
+   Catalog panel
+   ======================================== */
+
+.panel-intro {
+  animation: fade-in 280ms ease both;
+}
+
+.panel-intro h2 {
+  margin-bottom: 8px;
+}
+
+.panel-intro .hint {
+  margin-top: 0;
+  line-height: 1.7;
+}
+
+.catalog-type-section {
+  margin: 16px 0;
+}
+
+.catalog-type-header {
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #eadcc1;
+}
+
+.catalog-type-count {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.catalog-item {
+  padding: 8px 10px;
+  border: 1px solid #eadcc1;
+  border-radius: 8px;
+  margin: 6px 0;
+  background: rgba(255, 255, 255, 0.5);
+  transition: background 150ms ease;
+}
+
+.catalog-item:hover {
+  background: rgba(255, 250, 240, 0.85);
+}
+
+.catalog-item strong {
+  display: block;
+  margin-bottom: 2px;
+  color: #3f2c18;
+}
+
+.catalog-item .small {
+  margin: 2px 0;
+}
+
+.catalog-selection {
+  border-color: var(--accent);
+  background: rgba(217, 242, 234, 0.5);
+}
+
+.catalog-item button,
+.catalog-selection button {
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+/* ========================================
+   Selection toolbar
+   ======================================== */
+
+.selection-toolbar {
+  position: fixed;
+  z-index: 30;
+  transform: translate(-50%, -100%);
+  padding: 6px 10px;
+  border: 1px solid #9bb9ae;
+  border-radius: 10px;
+  background: #f6fff9;
+  box-shadow: 0 8px 24px rgba(10, 40, 33, 0.16);
+  white-space: nowrap;
+}
+
+.selection-toolbar button {
+  font-size: 14px;
+  padding: 6px 12px;
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.selection-toolbar button:hover {
+  background: #0a7d64;
+}
+
+/* ========================================
+   Hover preview tooltip
+   ======================================== */
+
+.annotation-preview {
+  position: fixed;
+  z-index: 35;
+  max-width: 340px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: 0 10px 28px rgba(49, 33, 15, 0.18);
+  font-size: 13px;
+  line-height: 1.65;
+  pointer-events: none;
+  animation: fade-in 150ms ease both;
+}
+
+.annotation-preview strong {
+  display: block;
+  margin: 4px 0;
+  font-size: 14px;
+  color: #3f2c18;
+}
+
+.annotation-preview p {
+  margin: 4px 0 0;
+  color: #5a4025;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+@keyframes flash-highlight {
+  from { background-color: rgba(249, 235, 184, 0.95); }
+  to { background-color: rgba(255, 248, 240, 0.75); }
+}
+
+/* ========================================
+   Responsive
+   ======================================== */
+
 @media (max-width: 800px) {
   .app-shell {
     padding: 12px;
@@ -394,5 +821,9 @@ textarea {
   .editor-buttons,
   .panel-actions {
     flex-wrap: wrap;
+  }
+
+  .annotation-preview {
+    max-width: 260px;
   }
 }

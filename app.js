@@ -4,20 +4,22 @@ const STORAGE_BACKUP_KEY = `${STORAGE_KEY}__backup`;
 const STORAGE_META_KEY = `${STORAGE_KEY}__meta`;
 const APP_VERSION = "2026-06-11.1";
 
-const ANNOTATION_TYPES = ["commentary", "definition", "cross_reference", "historical_note", "interpretation"];
+const ANNOTATION_TYPES = ["commentary", "definition", "cross_reference", "historical_note", "interpretation", "citation"];
 const ANNOTATION_TYPE_LABELS = {
   commentary: "義例注",
   definition: "訓詁注",
   cross_reference: "參照注",
   historical_note: "史事注",
-  interpretation: "義理注"
+  interpretation: "義理注",
+  citation: "引用注"
 };
 const ANNOTATION_TYPE_MARKERS = {
   commentary: "注",
   definition: "訓",
   cross_reference: "參",
   historical_note: "史",
-  interpretation: "義"
+  interpretation: "義",
+  citation: "引"
 };
 
 const EMPTY_CORPUS = {

@@ -373,6 +373,8 @@ textarea {
   --ann-historical-bg: rgba(178, 34, 34, 0.08);
   --ann-interpretation: #1e3a5f;
   --ann-interpretation-bg: rgba(30, 58, 95, 0.08);
+  --ann-citation: #b8860b;
+  --ann-citation-bg: rgba(184, 134, 11, 0.08);
 }
 
 .ann-token {
@@ -489,6 +491,19 @@ textarea {
   color: var(--ann-interpretation);
 }
 
+/* Type: citation (dark amber thick dashed underline) */
+.ann-type-citation {
+  border-bottom: 3px dashed var(--ann-citation);
+  background: var(--ann-citation-bg);
+}
+.ann-type-citation:hover {
+  background: rgba(184, 134, 11, 0.18);
+}
+.ann-type-citation::after {
+  content: "引";
+  color: var(--ann-citation);
+}
+
 /* ========================================
    Type badges
    ======================================== */
@@ -530,6 +545,12 @@ textarea {
   background: var(--ann-interpretation-bg);
   color: var(--ann-interpretation);
   border: 1px solid var(--ann-interpretation);
+}
+
+.ann-type-badge.citation {
+  background: var(--ann-citation-bg);
+  color: var(--ann-citation);
+  border: 1px solid var(--ann-citation);
 }
 
 .ann-type-badge.small-badge {
